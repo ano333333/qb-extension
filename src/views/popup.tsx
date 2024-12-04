@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '../tailwind.css'
+import './tailwind.css'
 import PopupApp from './PopupApp.tsx'
 
 const root = document.getElementById('root')
