@@ -12,4 +12,15 @@ export default defineConfig({
 			plugins: [tailwindcss],
 		},
 	},
+	build: {
+		rollupOptions: {
+			input: {
+				popup: "popup.html",
+				index: "index.html",
+			},
+			output: {
+				entryFileNames: "[name].js",
+			},
+		},
+	},
 });
