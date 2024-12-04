@@ -3,8 +3,11 @@ import { createRoot } from 'react-dom/client'
 import '../tailwind.css'
 import PopupApp from './PopupApp.tsx'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
+const root = document.getElementById('root')
+if (root) {
+  createRoot(root).render(
+    <StrictMode>
     <PopupApp />
-  </StrictMode>,
-)
+    </StrictMode>,
+  )
+}
