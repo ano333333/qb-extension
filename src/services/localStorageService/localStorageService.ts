@@ -1,0 +1,167 @@
+import { inject, injectable } from "inversify";
+import type { ILocalStorageAdapter } from "../../adapters/localStorage/base";
+import { TYPES } from "../../types";
+import {
+	LocalStorageVer1Default,
+	type LocalStorageVer1Schema,
+} from "./ver1Schema";
+import type { AnswerResultEnum } from "../../logics/answerResultEnum";
+import { Dayjs } from "dayjs";
+
+@injectable()
+export class LocalStorageService {
+	private _localStorageAdapter: ILocalStorageAdapter;
+
+	constructor(
+		@inject(TYPES.ILocalStorageAdapter)
+		localStorageAdapter: ILocalStorageAdapter,
+	) {
+		this._localStorageAdapter = localStorageAdapter;
+	}
+
+	/**
+	 * local storageのバージョンをチェックし、デフォルト値のセットまたはバージョンアップを行う
+	 */
+	async validateVersion() {
+		const version = await this._localStorageAdapter.get<number>("version");
+		if (version === null) {
+			const defaultValues = LocalStorageVer1Default;
+			for (const key in defaultValues) {
+				await this._localStorageAdapter.set(
+					key,
+					defaultValues[key as keyof typeof defaultValues],
+				);
+			}
+		}
+	}
+
+	/**
+	 * 問題IDに紐づく回答結果を取得
+	 * @param questionId 問題ID
+	 * @returns 回答結果の配列
+	 */
+	async getAnswerResultsByQuestionId(questionId: string) {
+		const answerResults =
+			await this._localStorageAdapter.get<
+				LocalStorageVer1Schema["answerResults"]
+			>("answerResults");
+		return answerResults
+			.filter((answerResult) => answerResult.questionId === questionId)
+			.map((answerResult) => ({
+				...answerResult,
+				answerDate: new Dayjs(answerResult.answerDate),
+			}));
+	}
+
+	/**
+	 * 回答結果の登録または更新
+	 * @param id 回答結果のID(nullの場合新規作成、numberの場合更新)
+	 * @param questionId 問題ID
+	 * @param setId セットID
+	 * @param answerDate 回答日
+	 * @param result 回答結果
+	 * @returns 登録・更新したanswerResultのID
+	 * @throws idが一致する回答結果が見つからない
+	 */
+	async upsertAnswerResult(
+		id: number | null,
+		questionId: string,
+		setId: string,
+		answerDate: Dayjs,
+		result: AnswerResultEnum,
+	) {
+		const answerResults =
+			await this._localStorageAdapter.get<
+				LocalStorageVer1Schema["answerResults"]
+			>("answerResults");
+		const answerResultNextId = await this._localStorageAdapter.get<number>(
+			"answerResultsNextId",
+		);
+		if (id !== null) {
+			const answerResultIndex = answerResults.findIndex(
+				(answerResult) => answerResult.id === id,
+			);
+			if (answerResultIndex === -1) {
+				throw new Error("Answer result not found");
+			}
+			answerResults[answerResultIndex] = {
+				id,
+				questionId,
+				setId,
+				answerDate: answerDate.format("YYYY-MM-DD"),
+				result,
+			};
+			await this._localStorageAdapter.set("answerResults", answerResults);
+			return id;
+		}
+		answerResults.push({
+			id: answerResultNextId,
+			questionId,
+			setId,
+			answerDate: answerDate.format("YYYY-MM-DD"),
+			result,
+		});
+		await this._localStorageAdapter.set("answerResults", answerResults);
+		await this._localStorageAdapter.set(
+			"answerResultsNextId",
+			answerResultNextId + 1,
+		);
+		return answerResultNextId;
+	}
+
+	/**
+	 * 回答結果IDに紐づく復習予定を取得
+	 * @param answerResultId 回答結果ID
+	 * @returns 復習予定
+	 */
+	async getReviewPlanByAnswerResultId(answerResultId: number) {
+		const reviewPlans =
+			await this._localStorageAdapter.get<
+				LocalStorageVer1Schema["reviewPlans"]
+			>("reviewPlans");
+		const reviewPlan = reviewPlans.find(
+			(reviewPlan) => reviewPlan.answerResultId === answerResultId,
+		);
+		if (reviewPlan === undefined) {
+			return null;
+		}
+		return {
+			...reviewPlan,
+			nextDate: new Dayjs(reviewPlan.nextDate),
+		};
+	}
+
+	/**
+	 * レビュー予定の登録または更新
+	 * @param answerResultId 回答結果ID(一致するレビュー予定がない場合新規作成)
+	 * @param nextDate 次回レビュー日
+	 * @returns 登録・更新したreviewPlanのID
+	 */
+	async upsertReviewPlan(answerResultId: number, nextDate: Dayjs) {
+		const reviewPlans =
+			await this._localStorageAdapter.get<
+				LocalStorageVer1Schema["reviewPlans"]
+			>("reviewPlans");
+		const reviewPlanNextId =
+			await this._localStorageAdapter.get<number>("reviewPlanNextId");
+		const reviewPlanIndex = reviewPlans.findIndex(
+			(reviewPlan) => reviewPlan.answerResultId === answerResultId,
+		);
+		if (reviewPlanIndex === -1) {
+			reviewPlans.push({
+				id: reviewPlanNextId,
+				answerResultId,
+				nextDate: nextDate.format("YYYY-MM-DD"),
+			});
+			await this._localStorageAdapter.set("reviewPlans", reviewPlans);
+			await this._localStorageAdapter.set(
+				"reviewPlanNextId",
+				reviewPlanNextId + 1,
+			);
+			return reviewPlanNextId;
+		}
+		reviewPlans[reviewPlanIndex].nextDate = nextDate.format("YYYY-MM-DD");
+		await this._localStorageAdapter.set("reviewPlans", reviewPlans);
+		return reviewPlans[reviewPlanIndex].id;
+	}
+}
