@@ -16,7 +16,7 @@ export function calcNextReviewDate(
 	reviewDate: Dayjs | null,
 	answerResult: AnswerResultEnum,
 ) {
-	if (prevDate === null) {
+	if (prevDate === null || reviewDate === null) {
 		switch (answerResult) {
 			case AnswerResultEnum.None:
 			case AnswerResultEnum.Wrong:
@@ -36,11 +36,11 @@ export function calcNextReviewDate(
 			case AnswerResultEnum.Wrong:
 				return date.add(1, "day");
 			case AnswerResultEnum.Difficult:
-				return date.add(daysDiff * 1.5, "day");
+				return date.add(daysDiff, "day");
 			case AnswerResultEnum.Correct:
-				return date.add(daysDiff * 2, "day");
+				return date.add(Math.floor(daysDiff * 1.5), "day");
 			case AnswerResultEnum.Easy:
-				return date.add(daysDiff * 3, "day");
+				return date.add(daysDiff * 2, "day");
 		}
 	}
 	const daysDiff = date.diff(prevDate, "day");
@@ -51,6 +51,6 @@ export function calcNextReviewDate(
 		case AnswerResultEnum.Difficult:
 		case AnswerResultEnum.Correct:
 		case AnswerResultEnum.Easy:
-			return date.add(daysDiff, "day");
+			return reviewDate.add(daysDiff, "day");
 	}
 }

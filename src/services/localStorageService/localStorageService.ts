@@ -6,7 +6,7 @@ import {
 	type LocalStorageVer1Schema,
 } from "./ver1Schema";
 import type { AnswerResultEnum } from "../../logics/answerResultEnum";
-import { Dayjs } from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 
 @injectable()
 export class LocalStorageService {
@@ -23,9 +23,8 @@ export class LocalStorageService {
 	 * local storageのバージョンをチェックし、デフォルト値のセットまたはバージョンアップを行う
 	 */
 	async validateVersion() {
-		const version = await this._localStorageAdapter.get<number>("version");
-		if (version === null) {
-			const defaultValues = LocalStorageVer1Default;
+		if (!(await this._localStorageAdapter.hasKey("version"))) {
+			const defaultValues = { ...LocalStorageVer1Default };
 			for (const key in defaultValues) {
 				await this._localStorageAdapter.set(
 					key,
@@ -49,7 +48,7 @@ export class LocalStorageService {
 			.filter((answerResult) => answerResult.questionId === questionId)
 			.map((answerResult) => ({
 				...answerResult,
-				answerDate: new Dayjs(answerResult.answerDate),
+				answerDate: dayjs(answerResult.answerDate),
 			}));
 	}
 
@@ -127,7 +126,7 @@ export class LocalStorageService {
 		}
 		return {
 			...reviewPlan,
-			nextDate: new Dayjs(reviewPlan.nextDate),
+			nextDate: dayjs(reviewPlan.nextDate),
 		};
 	}
 
@@ -142,23 +141,23 @@ export class LocalStorageService {
 			await this._localStorageAdapter.get<
 				LocalStorageVer1Schema["reviewPlans"]
 			>("reviewPlans");
-		const reviewPlanNextId =
-			await this._localStorageAdapter.get<number>("reviewPlanNextId");
+		const reviewPlansNextId =
+			await this._localStorageAdapter.get<number>("reviewPlansNextId");
 		const reviewPlanIndex = reviewPlans.findIndex(
 			(reviewPlan) => reviewPlan.answerResultId === answerResultId,
 		);
 		if (reviewPlanIndex === -1) {
 			reviewPlans.push({
-				id: reviewPlanNextId,
+				id: reviewPlansNextId,
 				answerResultId,
 				nextDate: nextDate.format("YYYY-MM-DD"),
 			});
 			await this._localStorageAdapter.set("reviewPlans", reviewPlans);
 			await this._localStorageAdapter.set(
-				"reviewPlanNextId",
-				reviewPlanNextId + 1,
+				"reviewPlansNextId",
+				reviewPlansNextId + 1,
 			);
-			return reviewPlanNextId;
+			return reviewPlansNextId;
 		}
 		reviewPlans[reviewPlanIndex].nextDate = nextDate.format("YYYY-MM-DD");
 		await this._localStorageAdapter.set("reviewPlans", reviewPlans);
