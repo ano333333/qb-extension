@@ -3,7 +3,7 @@ import { MockLocalStorage } from "../adapters/localStorage/mockLocalStorage";
 import { LocalStorageService } from "../../src/services/localStorageService/localStorageService";
 import { AnswerResultEnum } from "../../src/logics/answerResultEnum";
 import dayjs from "dayjs";
-import { upsertAnswerResultAndReviewPlan } from "../../src/usecase/upsertAnswerResultAndReviewPlan";
+import { upsertAnswerResultAndReviewPlan } from "../../src/usecases/upsertAnswerResultAndReviewPlan";
 
 describe("upsertAnswerResultAndReviewPlan", () => {
 	let localStorageAdapter: MockLocalStorage;
