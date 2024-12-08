@@ -14,6 +14,13 @@ const manifest: ManifestV3Export = {
 	action: {
 		default_popup: "popup.html",
 	},
+	permissions: ["storage"],
+	content_scripts: [
+		{
+			matches: ["https://qb.medilink-study.com/Answer/*"],
+			js: ["src/views/qbAnswerContent/content.tsx"],
+		},
+	],
 };
 
 // https://vite.dev/config/
