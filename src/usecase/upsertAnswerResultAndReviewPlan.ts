@@ -3,6 +3,15 @@ import type { LocalStorageService } from "../services/localStorageService/localS
 import type { AnswerResultEnum } from "../logics/answerResultEnum";
 import { calcNextReviewDate } from "../logics/calcNextReviewDate";
 
+/**
+ * 問題IDと新しい回答日付から、local storageの更新・登録を行う
+ * @param localStorageService
+ * @param questionId
+ * @param setId
+ * @param answerDate
+ * @param result
+ * @returns
+ */
 export async function upsertAnswerResultAndReviewPlan(
 	localStorageService: LocalStorageService,
 	questionId: string,
@@ -10,41 +19,66 @@ export async function upsertAnswerResultAndReviewPlan(
 	answerDate: Dayjs,
 	result: AnswerResultEnum,
 ) {
-	let answerResults =
+	const answerResults =
 		await localStorageService.getAnswerResultsByQuestionId(questionId);
-	// 本日分の記録があれば更新
-	const todayAnswerResultId =
+
+	// この問題に対する、answerDate以前の一番最近の回答履歴を取得
+	const filteredAnswerResults = answerResults.filter(
+		(answerResult) => !answerResult.answerDate.isSame(answerDate, "day"),
+	);
+	let prevAnswerResult = null as (typeof answerResults)[number] | null;
+	if (filteredAnswerResults.length !== 0) {
+		prevAnswerResult = filteredAnswerResults[filteredAnswerResults.length - 1];
+	}
+	// answerDateの回答履歴を取得
+	const todayAnswerResult =
 		answerResults.find((answerResult) =>
 			answerResult.answerDate.isSame(answerDate, "day"),
-		)?.id ?? null;
-	const answerResultId = await localStorageService.upsertAnswerResult(
-		todayAnswerResultId,
+		) ?? null;
+
+	// prevAnswerResultに対するreviewPlanのnextDateを取得
+	let prevReviewPlan = null;
+	if (prevAnswerResult !== null) {
+		prevReviewPlan = await localStorageService.getReviewPlanByAnswerResultId(
+			prevAnswerResult.id,
+		);
+	}
+
+	// 次の復習予定日の計算
+	console.log(
+		`calcNextReviewDate: ${answerDate.format("YYYY-MM-DD")} ${prevAnswerResult?.answerDate.format("YYYY-MM-DD")} ${prevReviewPlan?.nextDate.format("YYYY-MM-DD")} ${result}`,
+	);
+	const nextReviewDate = calcNextReviewDate(
+		answerDate,
+		prevAnswerResult?.answerDate ?? null,
+		prevReviewPlan?.nextDate ?? null,
+		result,
+	);
+	console.log(`nextReviewDate: ${nextReviewDate?.format("YYYY-MM-DD")}`);
+
+	// 本日分のanswerResultの登録・更新
+	const upsertedAnswerResultId = await localStorageService.upsertAnswerResult(
+		todayAnswerResult?.id ?? null,
 		questionId,
 		setId,
 		answerDate,
 		result,
 	);
 
-	// 今日以前の問題回答履歴から、最後の回答日を取得
-	answerResults = answerResults.filter(
-		(answerResult) => !answerResult.answerDate.isSame(answerDate, "day"),
-	);
-	let prevDate = null as Dayjs | null;
-	if (answerResults.length !== 0) {
-		prevDate = answerResults[answerResults.length - 1].answerDate;
+	// 今日以前の最新のreviewPlanの更新
+	if (prevAnswerResult && prevReviewPlan) {
+		await localStorageService.upsertReviewPlan(
+			prevAnswerResult.id,
+			prevReviewPlan.nextDate,
+			true,
+		);
 	}
-
-	// 元々の復習予定日を取得
-	const reviewPlan =
-		await localStorageService.getReviewPlanByAnswerResultId(answerResultId);
-	const reviewPlanDate = reviewPlan?.nextDate ?? null;
-	const nextReviewDate = calcNextReviewDate(
-		answerDate,
-		reviewPlanDate,
-		prevDate,
-		result,
+	// 今日のreviewPlanの登録・更新
+	await localStorageService.upsertReviewPlan(
+		upsertedAnswerResultId,
+		nextReviewDate,
+		false,
 	);
 
-	// 復習予定を登録・更新
-	await localStorageService.upsertReviewPlan(answerResultId, nextReviewDate);
+	return upsertedAnswerResultId;
 }

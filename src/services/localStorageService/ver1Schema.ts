@@ -14,6 +14,7 @@ export type LocalStorageVer1Schema = {
 		id: number;
 		answerResultId: number;
 		nextDate: string; // "YYYY-MM-DD"
+		completed: boolean;
 	}>;
 	reviewPlansNextId: number;
 };

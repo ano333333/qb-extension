@@ -134,9 +134,14 @@ export class LocalStorageService {
 	 * レビュー予定の登録または更新
 	 * @param answerResultId 回答結果ID(一致するレビュー予定がない場合新規作成)
 	 * @param nextDate 次回レビュー日
+	 * @param completed 復習完了フラグ
 	 * @returns 登録・更新したreviewPlanのID
 	 */
-	async upsertReviewPlan(answerResultId: number, nextDate: Dayjs) {
+	async upsertReviewPlan(
+		answerResultId: number,
+		nextDate: Dayjs,
+		completed: boolean,
+	) {
 		const reviewPlans =
 			await this._localStorageAdapter.get<
 				LocalStorageVer1Schema["reviewPlans"]
@@ -151,6 +156,7 @@ export class LocalStorageService {
 				id: reviewPlansNextId,
 				answerResultId,
 				nextDate: nextDate.format("YYYY-MM-DD"),
+				completed,
 			});
 			await this._localStorageAdapter.set("reviewPlans", reviewPlans);
 			await this._localStorageAdapter.set(
@@ -160,6 +166,7 @@ export class LocalStorageService {
 			return reviewPlansNextId;
 		}
 		reviewPlans[reviewPlanIndex].nextDate = nextDate.format("YYYY-MM-DD");
+		reviewPlans[reviewPlanIndex].completed = completed;
 		await this._localStorageAdapter.set("reviewPlans", reviewPlans);
 		return reviewPlans[reviewPlanIndex].id;
 	}

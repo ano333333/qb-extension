@@ -8,7 +8,6 @@ export class MockLocalStorage implements ILocalStorageAdapter {
 	_listeners: Record<string, ((data: unknown) => void)[]> = {};
 
 	constructor(data: Record<string, unknown> = {}) {
-		this._data = data;
 		this._data = JSON.parse(JSON.stringify(data));
 	}
 

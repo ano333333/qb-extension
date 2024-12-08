@@ -33,6 +33,7 @@ describe("LocalStorageService", () => {
 					id: z.number(),
 					answerResultId: z.number(),
 					nextDate: z.string(),
+					completed: z.boolean(),
 				}),
 			),
 		);
@@ -199,16 +200,19 @@ describe("LocalStorageService", () => {
 				id: 0,
 				answerResultId: 0,
 				nextDate: "2024-12-09",
+				completed: false,
 			},
 			{
 				id: 1,
 				answerResultId: 2,
 				nextDate: "2024-12-10",
+				completed: false,
 			},
 			{
 				id: 2,
 				answerResultId: 4,
 				nextDate: "2024-12-11",
+				completed: false,
 			},
 		]);
 		await localStorageAdapter.set("reviewPlansNextId", 3);
@@ -219,6 +223,7 @@ describe("LocalStorageService", () => {
 			id: 0,
 			answerResultId: 0,
 			nextDate: dayjs("2024-12-09"),
+			completed: false,
 		});
 		const reviewPlan1 =
 			await localStorageService.getReviewPlanByAnswerResultId(1);
@@ -232,33 +237,38 @@ describe("LocalStorageService", () => {
 				id: 0,
 				answerResultId: 0,
 				nextDate: "2024-12-09",
+				completed: false,
 			},
 			{
 				id: 1,
 				answerResultId: 2,
 				nextDate: "2024-12-10",
+				completed: false,
 			},
 			{
 				id: 2,
 				answerResultId: 4,
 				nextDate: "2024-12-11",
+				completed: false,
 			},
 		]);
 		await localStorageAdapter.set("reviewPlansNextId", 3);
-		await localStorageService.upsertReviewPlan(3, dayjs("2024-12-12"));
+		await localStorageService.upsertReviewPlan(3, dayjs("2024-12-12"), false);
 		validateMockLocalStorage();
 		expect((await localStorageAdapter.get("reviewPlans"))?.[3]).toEqual({
 			id: 3,
 			answerResultId: 3,
 			nextDate: "2024-12-12",
+			completed: false,
 		});
 		expect(await localStorageAdapter.get("reviewPlansNextId")).toBe(4);
-		await localStorageService.upsertReviewPlan(2, dayjs("2024-12-13"));
+		await localStorageService.upsertReviewPlan(2, dayjs("2024-12-13"), true);
 		validateMockLocalStorage();
 		expect((await localStorageAdapter.get("reviewPlans"))?.[1]).toEqual({
 			id: 1,
 			answerResultId: 2,
 			nextDate: "2024-12-13",
+			completed: true,
 		});
 	});
 });
