@@ -170,4 +170,46 @@ export class LocalStorageService {
 		await this._localStorageAdapter.set("reviewPlans", reviewPlans);
 		return reviewPlans[reviewPlanIndex].id;
 	}
+	/**
+	 * 未完了(completed === false)のreviewPlanで、nextDateがuntilOrEqualTo以下のものを、answerResultsと結合してnextDate昇順で取得
+	 * @param untilOrEqualTo
+	 * @returns
+	 */
+	async getUncompletedReviewPlans(untilOrEqualTo: Dayjs) {
+		const reviewPlans =
+			await this._localStorageAdapter.get<
+				LocalStorageVer1Schema["reviewPlans"]
+			>("reviewPlans");
+		const answerResults =
+			await this._localStorageAdapter.get<
+				LocalStorageVer1Schema["answerResults"]
+			>("answerResults");
+		const idAnswerResultMap = new Map<number, (typeof answerResults)[number]>();
+		for (const answerResult of answerResults) {
+			idAnswerResultMap.set(answerResult.id, answerResult);
+		}
+		const filteredReviewPlans = reviewPlans
+			.filter((reviewPlan) => !reviewPlan.completed)
+			.filter(
+				(reviewPlan) =>
+					!dayjs(reviewPlan.nextDate).isAfter(untilOrEqualTo, "day"),
+			)
+			.sort((a, b) => dayjs(a.nextDate).diff(dayjs(b.nextDate)));
+		return filteredReviewPlans.map((reviewPlan) => {
+			const answerResult = idAnswerResultMap.get(reviewPlan.answerResultId);
+			if (!answerResult) {
+				throw new Error(
+					`Answer result not found: ${reviewPlan.answerResultId}`,
+				);
+			}
+			return {
+				...reviewPlan,
+				nextDate: dayjs(reviewPlan.nextDate),
+				answerResult: {
+					...answerResult,
+					answerDate: dayjs(answerResult.answerDate),
+				},
+			};
+		});
+	}
 }
