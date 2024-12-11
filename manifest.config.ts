@@ -12,7 +12,7 @@ export default defineManifest(async (env) => ({
 	permissions: ["storage"],
 	content_scripts: [
 		{
-			matches: ["https://qb.medilink-study.com/Answer/*"],
+			matches: ["https://qb.medilink-study.com/*"],
 			js: ["src/views/qbAnswerContent/content.tsx"],
 		},
 	],

@@ -14,42 +14,56 @@ const localStorageService = container.get<LocalStorageService>(
 );
 const app = document.getElementById("app");
 
-// local storageのバリデーション中表示
-const thirdChild = app?.children[2];
-if (thirdChild) {
-	const container = document.createElement("div");
-	createRoot(container).render(
-		<StrictMode>
-			<Notifier
-				promise={localStorageService.validateVersion()}
-				message="qb-extension: ローカルストレージのバリデーション中です。ウィンドウを閉じないでください。"
-			/>
-		</StrictMode>,
-	);
-	app?.insertBefore(container, thirdChild);
-}
-
-const setId = getSetId();
+let setId = "";
 // questionYear(questionIdが"113A56"ならば113など)を取得
 let questionYear = 0;
-const intervalId = setInterval(async () => {
-	try {
-		questionYear = await getQuestionYear();
-		setOnClickCheckAnswerBtn();
-		clearInterval(intervalId);
-	} catch {
-		return;
+
+let currentUrl = "";
+// 一定時間おきにポーリングして、URL変化をlistenする
+setInterval(() => {
+	console.log("setInterval");
+	if (currentUrl !== window.location.href) {
+		currentUrl = window.location.href;
+		if (
+			currentUrl.match(/https:\/\/qb.medilink-study.com\/Answer\/[0-9A-D]+/) !==
+			null
+		) {
+			onPageLoaded();
+		}
 	}
-	console.log(questionYear);
 }, 500);
 
-const root = app?.appendChild(document.createElement("div"));
-if (root) {
-	createRoot(root).render(
-		<StrictMode>
-			<div>Hello</div>
-		</StrictMode>,
-	);
+function onPageLoaded() {
+	console.log("content.tsx");
+
+	// local storageのバリデーション中表示
+	const thirdChild = app?.children[2];
+	if (thirdChild) {
+		const container = document.createElement("div");
+		createRoot(container).render(
+			<StrictMode>
+				<Notifier
+					promise={localStorageService.validateVersion()}
+					message="qb-extension: ローカルストレージのバリデーション中です。ウィンドウを閉じないでください。"
+				/>
+			</StrictMode>,
+		);
+		app?.insertBefore(container, thirdChild);
+	}
+
+	setId = getSetId();
+	questionYear = 0;
+
+	const intervalId = setInterval(async () => {
+		try {
+			questionYear = await getQuestionYear();
+			setOnClickCheckAnswerBtn();
+			clearInterval(intervalId);
+		} catch {
+			return;
+		}
+		console.log(questionYear);
+	}, 500);
 }
 
 /**
