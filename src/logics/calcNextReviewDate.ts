@@ -38,7 +38,7 @@ export function calcNextReviewDate(
 			case AnswerResultEnum.Difficult:
 				return date.add(daysDiff, "day");
 			case AnswerResultEnum.Correct:
-				return date.add(Math.floor(daysDiff * 1.5), "day");
+				return date.add(Math.ceil(daysDiff * 1.5), "day");
 			case AnswerResultEnum.Easy:
 				return date.add(daysDiff * 2, "day");
 		}
