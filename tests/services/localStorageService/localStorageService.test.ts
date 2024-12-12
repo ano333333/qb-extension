@@ -4,9 +4,9 @@ import { beforeEach, describe } from "vitest";
 import { z } from "zod";
 import { AnswerResultEnum } from "../../../src/logics/answerResultEnum";
 import { it } from "vitest";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import { expect } from "vitest";
-
+import { faker } from "@faker-js/faker";
 describe("LocalStorageService", () => {
 	let localStorageAdapter: MockLocalStorage;
 	let localStorageService: LocalStorageService;
@@ -270,5 +270,113 @@ describe("LocalStorageService", () => {
 			nextDate: "2024-12-13",
 			completed: true,
 		});
+	});
+
+	it("getUncompletedReviewPlans", async () => {
+		const merged = new Array<{
+			id: number;
+			answerResultId: number;
+			nextDate: Dayjs;
+			completed: boolean;
+			answerResult: {
+				id: number;
+				questionId: string;
+				setId: string;
+				answerDate: Dayjs;
+				result: AnswerResultEnum;
+			};
+		}>(100);
+		for (let i = 0; i < 100; i++) {
+			const questionId = faker.string.alphanumeric({
+				length: { min: 5, max: 5 },
+				casing: "upper",
+			});
+			merged[i] = {
+				id: i,
+				answerResultId: i,
+				nextDate: dayjs(
+					faker.date
+						.soon({
+							days: 14,
+						})
+						.toDateString(),
+				),
+				completed: faker.datatype.boolean(),
+				answerResult: {
+					id: i,
+					questionId,
+					setId: questionId,
+					answerDate: dayjs(
+						faker.date
+							.recent({
+								days: 14,
+							})
+							.toDateString(),
+					),
+					result: faker.helpers.arrayElement(Object.values(AnswerResultEnum)),
+				},
+			};
+		}
+		await localStorageAdapter.set(
+			"answerResults",
+			merged.map((merged) => ({
+				...merged.answerResult,
+				answerDate: merged.answerResult.answerDate.format("YYYY-MM-DD"),
+			})),
+		);
+		await localStorageAdapter.set("answerResultsNextId", 100);
+		await localStorageAdapter.set(
+			"reviewPlans",
+			merged.map((merged) => ({
+				id: merged.id,
+				answerResultId: merged.answerResultId,
+				nextDate: merged.nextDate.format("YYYY-MM-DD"),
+				completed: merged.completed,
+			})),
+		);
+		await localStorageAdapter.set("reviewPlansNextId", 100);
+
+		const untilOrEqualTo = dayjs(faker.date.soon());
+		const uncompletedReviewPlans =
+			await localStorageService.getUncompletedReviewPlans(untilOrEqualTo);
+		validateMockLocalStorage();
+
+		// uncompletedReviewPlansのnextDateは昇順になっている
+		for (let i = 0; i < uncompletedReviewPlans.length - 1; i++) {
+			expect(
+				!dayjs(uncompletedReviewPlans[i].nextDate).isAfter(
+					uncompletedReviewPlans[i + 1].nextDate,
+				),
+			).toBe(true);
+		}
+
+		// mergedを手動でフィルターしquestionId昇順・answerDate昇順にソートしたものと、
+		// uncompletedReviewPlansをquestionId昇順・answerDate昇順にソートしたものを比較
+		const filteredMerged = merged
+			.filter((merged) => !merged.completed)
+			.filter(
+				(merged) => !dayjs(merged.nextDate).isAfter(untilOrEqualTo, "day"),
+			)
+			.sort((a, b) => {
+				if (a.answerResult.questionId !== b.answerResult.questionId) {
+					return a.answerResult.questionId.localeCompare(
+						b.answerResult.questionId,
+					);
+				}
+				return a.answerResult.answerDate.diff(b.answerResult.answerDate);
+			});
+		const filteredUncompletedReviewPlans = uncompletedReviewPlans.sort(
+			(a, b) => {
+				if (a.answerResult.questionId !== b.answerResult.questionId) {
+					return a.answerResult.questionId.localeCompare(
+						b.answerResult.questionId,
+					);
+				}
+				return a.answerResult.answerDate.diff(b.answerResult.answerDate);
+			},
+		);
+		expect(filteredMerged.length).toEqual(
+			filteredUncompletedReviewPlans.length,
+		);
 	});
 });
