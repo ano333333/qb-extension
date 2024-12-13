@@ -19,8 +19,27 @@ function IndexApp() {
 		}>
 	>([]);
 	const today = dayjs();
+	const onDownloadDumpDataClick = async () => {
+		const url = await controllerRef.current.getDumpDataURL();
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `${today.format("YYYYMMDDHHmmss")}.json`;
+		a.click();
+	};
+	const onDumpFileInputChange = async (
+		e: React.ChangeEvent<HTMLInputElement>,
+	) => {
+		const file = e.target.files?.[0];
+		if (file) {
+			await controllerRef.current.loadDumpData(file);
+		}
+	};
 	return (
 		<>
+			<button type="button" onClick={onDownloadDumpDataClick}>
+				dump
+			</button>
+			<input type="file" onChange={onDumpFileInputChange} />
 			<h1 className="text-xl">{today.format("YYYY/MM/DD")}の復習予定</h1>
 			<button
 				type="button"

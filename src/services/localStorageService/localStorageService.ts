@@ -69,6 +69,9 @@ export class LocalStorageService {
 		answerDate: Dayjs,
 		result: AnswerResultEnum,
 	) {
+		console.log(
+			`upsertAnswerResult: ${id} ${questionId} ${setId} ${answerDate.format("YYYY-MM-DD")} ${result}`,
+		);
 		const answerResults =
 			await this._localStorageAdapter.get<
 				LocalStorageVer1Schema["answerResults"]
@@ -211,5 +214,45 @@ export class LocalStorageService {
 				},
 			};
 		});
+	}
+
+	async dump() {
+		const version = await this._localStorageAdapter.get<number>("version");
+		const answerResults =
+			await this._localStorageAdapter.get<
+				LocalStorageVer1Schema["answerResults"]
+			>("answerResults");
+		const answerResultsNextId = await this._localStorageAdapter.get<number>(
+			"answerResultsNextId",
+		);
+		const reviewPlans =
+			await this._localStorageAdapter.get<
+				LocalStorageVer1Schema["reviewPlans"]
+			>("reviewPlans");
+		const reviewPlansNextId =
+			await this._localStorageAdapter.get<number>("reviewPlansNextId");
+		const all = {
+			version,
+			answerResults,
+			answerResultsNextId,
+			reviewPlans,
+			reviewPlansNextId,
+		};
+		return JSON.stringify(all, null, 0);
+	}
+
+	async load(dump: string) {
+		const all = JSON.parse(dump);
+		await this._localStorageAdapter.set("version", all.version);
+		await this._localStorageAdapter.set("answerResults", all.answerResults);
+		await this._localStorageAdapter.set(
+			"answerResultsNextId",
+			all.answerResultsNextId,
+		);
+		await this._localStorageAdapter.set("reviewPlans", all.reviewPlans);
+		await this._localStorageAdapter.set(
+			"reviewPlansNextId",
+			all.reviewPlansNextId,
+		);
 	}
 }

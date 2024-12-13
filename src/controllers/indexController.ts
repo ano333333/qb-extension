@@ -20,4 +20,16 @@ export class IndexController {
 			};
 		});
 	}
+
+	public async getDumpDataURL() {
+		const dump = await this._localStorageService.dump();
+		const blob = new Blob([dump], { type: "application/json" });
+		const url = URL.createObjectURL(blob);
+		return url;
+	}
+
+	public async loadDumpData(file: File) {
+		const dump = await file.text();
+		await this._localStorageService.load(dump);
+	}
 }
