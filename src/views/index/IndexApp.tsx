@@ -1,9 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { container } from "../../inversify.config";
 import { TYPES } from "../../types";
 import { IndexController } from "../../controllers/indexController";
 import type { LocalStorageService } from "../../services/localStorageService/localStorageService";
 import dayjs, { type Dayjs } from "dayjs";
+import { Button } from "../components/button";
+import { ReviewPlansTable } from "./reviewPlansTable";
 
 function IndexApp() {
 	const controllerRef = useRef(
@@ -18,6 +20,11 @@ function IndexApp() {
 			reviewLimit: Dayjs;
 		}>
 	>([]);
+	useEffect(() => {
+		controllerRef.current.getReviewPlans().then((reviewPlans) => {
+			setReviewPlans(reviewPlans);
+		});
+	}, []);
 	const today = dayjs();
 	const onDownloadDumpDataClick = async () => {
 		const url = await controllerRef.current.getDumpDataURL();
@@ -36,41 +43,31 @@ function IndexApp() {
 	};
 	return (
 		<>
-			<button type="button" onClick={onDownloadDumpDataClick}>
-				dump
-			</button>
-			<input type="file" onChange={onDumpFileInputChange} />
-			<h1 className="text-xl">{today.format("YYYY/MM/DD")}の復習予定</h1>
-			<button
-				type="button"
-				onClick={async () => {
-					setReviewPlans(await controllerRef.current.getReviewPlans());
-				}}
-			>
-				refresh
-			</button>
-			<table>
-				<thead>
-					<tr>
-						<th>質問ID</th>
-						<th>質問URL</th>
-						<th>復習期限</th>
-					</tr>
-				</thead>
-				<tbody>
-					{reviewPlans.map((reviewPlan) => (
-						<tr key={reviewPlan.questionId}>
-							<td>{reviewPlan.questionId}</td>
-							<td>
-								<a href={reviewPlan.url} target="_blank" rel="noreferrer">
-									{reviewPlan.url}
-								</a>
-							</td>
-							<td>{reviewPlan.reviewLimit.format("YYYY/MM/DD")}</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
+			<div className="p-2 flex flex-row">
+				<Button
+					label="dump"
+					onClick={onDownloadDumpDataClick}
+					className="m-1"
+				/>
+				<input type="file" onChange={onDumpFileInputChange} className="m-1" />
+			</div>
+			<div className="p-2 w-full flex flex-col">
+				<div className="flex flex-row">
+					<h1 className="text-xl m-1">
+						{today.format("YYYY/MM/DD")}の復習予定({reviewPlans.length})
+					</h1>
+					<Button
+						label="refresh"
+						onClick={async () => {
+							setReviewPlans(await controllerRef.current.getReviewPlans());
+						}}
+						className="m-1"
+					/>
+				</div>
+				<div className="w-1/2">
+					<ReviewPlansTable reviewPlans={reviewPlans} />
+				</div>
+			</div>
 		</>
 	);
 }
