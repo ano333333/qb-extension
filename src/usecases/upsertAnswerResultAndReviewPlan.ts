@@ -80,5 +80,18 @@ export async function upsertAnswerResultAndReviewPlan(
 		false,
 	);
 
+	// 今日以前のanswerResultが1つまでになるよう、古いreviewPlanを削除
+	if (filteredAnswerResults.length >= 2) {
+		for (let i = filteredAnswerResults.length - 2; i >= 0; i--) {
+			const reviewPlan =
+				await localStorageService.getReviewPlanByAnswerResultId(
+					filteredAnswerResults[i].id,
+				);
+			if (reviewPlan) {
+				await localStorageService.deleteReviewPlan(reviewPlan.id);
+			}
+		}
+	}
+
 	return upsertedAnswerResultId;
 }

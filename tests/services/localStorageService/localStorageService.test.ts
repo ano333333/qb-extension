@@ -194,6 +194,93 @@ describe("LocalStorageService", () => {
 		}).rejects.toThrow(Error);
 	});
 
+	it("deleteReviewPlan", async () => {
+		const answerResults = [
+			{
+				id: 0,
+				questionId: "114C01",
+				setId: "114C01",
+				answerDate: "2024-12-07",
+				result: AnswerResultEnum.Correct,
+			},
+			{
+				id: 1,
+				questionId: "114C02",
+				setId: "114C02",
+				answerDate: "2024-12-08",
+				result: AnswerResultEnum.Wrong,
+			},
+			{
+				id: 2,
+				questionId: "114C02",
+				setId: "114C02",
+				answerDate: "2024-12-09",
+				result: AnswerResultEnum.Correct,
+			},
+			{
+				id: 3,
+				questionId: "114C03",
+				setId: "114C03",
+				answerDate: "2024-12-09",
+				result: AnswerResultEnum.Wrong,
+			},
+			{
+				id: 4,
+				questionId: "114C03",
+				setId: "114C03",
+				answerDate: "2024-12-10",
+				result: AnswerResultEnum.Correct,
+			},
+		];
+		await localStorageAdapter.set("answerResults", answerResults);
+		await localStorageAdapter.set("answerResultsNextId", 5);
+		const reviewPlans = [
+			{
+				id: 0,
+				answerResultId: 0,
+				nextDate: "2024-12-09",
+				completed: false,
+			},
+			{
+				id: 1,
+				answerResultId: 1,
+				nextDate: "2024-12-10",
+				completed: false,
+			},
+			{
+				id: 2,
+				answerResultId: 4,
+				nextDate: "2024-12-11",
+				completed: false,
+			},
+		];
+		await localStorageAdapter.set("reviewPlans", reviewPlans);
+		await localStorageAdapter.set("reviewPlansNextId", 3);
+		await localStorageService.deleteReviewPlan(0);
+		validateMockLocalStorage();
+		expect(await localStorageAdapter.get("answerResults")).toEqual(
+			answerResults,
+		);
+		expect(await localStorageAdapter.get("answerResultsNextId")).toBe(5);
+		const filteredReviewPlans = reviewPlans.filter(
+			(reviewPlan) => reviewPlan.id !== 0,
+		);
+		expect(await localStorageAdapter.get("reviewPlans")).toEqual(
+			filteredReviewPlans,
+		);
+		expect(await localStorageAdapter.get("reviewPlansNextId")).toBe(3);
+		await localStorageService.deleteReviewPlan(3);
+		validateMockLocalStorage();
+		expect(await localStorageAdapter.get("answerResults")).toEqual(
+			answerResults,
+		);
+		expect(await localStorageAdapter.get("answerResultsNextId")).toBe(5);
+		expect(await localStorageAdapter.get("reviewPlans")).toEqual(
+			filteredReviewPlans,
+		);
+		expect(await localStorageAdapter.get("reviewPlansNextId")).toBe(3);
+	});
+
 	it("getReviewPlanByAnswerResultId", async () => {
 		await localStorageAdapter.set("reviewPlans", [
 			{

@@ -216,6 +216,24 @@ export class LocalStorageService {
 		});
 	}
 
+	/**
+	 * reviewPlanの削除
+	 * @param id
+	 */
+	async deleteReviewPlan(id: number) {
+		const reviewPlans =
+			await this._localStorageAdapter.get<
+				LocalStorageVer1Schema["reviewPlans"]
+			>("reviewPlans");
+		const reviewPlanIndex = reviewPlans.findIndex(
+			(reviewPlan) => reviewPlan.id === id,
+		);
+		if (reviewPlanIndex !== -1) {
+			reviewPlans.splice(reviewPlanIndex, 1);
+			await this._localStorageAdapter.set("reviewPlans", reviewPlans);
+		}
+	}
+
 	async dump() {
 		const version = await this._localStorageAdapter.get<number>("version");
 		const answerResults =
