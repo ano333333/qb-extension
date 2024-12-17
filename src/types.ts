@@ -1,4 +1,4 @@
 export const TYPES = {
 	ILocalStorageAdapter: Symbol.for("ILocalStorageAdapter"),
-	LocalStorageService: Symbol.for("LocalStorageService"),
+	ILocalStorageService: Symbol.for("ILocalStorageService"),
 };

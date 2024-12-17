@@ -10,7 +10,7 @@ import dayjs from "dayjs";
 import { upsertAnswerResultAndReviewPlan } from "../../usecases/upsertAnswerResultAndReviewPlan";
 
 const localStorageService = container.get<LocalStorageService>(
-	TYPES.LocalStorageService,
+	TYPES.ILocalStorageService,
 );
 const app = document.getElementById("app");
 

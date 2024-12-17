@@ -10,7 +10,7 @@ import { ReviewPlansTable } from "./reviewPlansTable";
 function IndexApp() {
 	const controllerRef = useRef(
 		new IndexController(
-			container.get<LocalStorageService>(TYPES.LocalStorageService),
+			container.get<LocalStorageService>(TYPES.ILocalStorageService),
 		),
 	);
 	const [reviewPlans, setReviewPlans] = useState<

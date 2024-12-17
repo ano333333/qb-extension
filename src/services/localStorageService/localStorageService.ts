@@ -7,9 +7,10 @@ import {
 } from "./ver1Schema";
 import type { AnswerResultEnum } from "../../logics/answerResultEnum";
 import dayjs, { type Dayjs } from "dayjs";
+import type { ILocalStorageService } from "./base";
 
 @injectable()
-export class LocalStorageService {
+export class LocalStorageService implements ILocalStorageService {
 	private _localStorageAdapter: ILocalStorageAdapter;
 
 	constructor(
