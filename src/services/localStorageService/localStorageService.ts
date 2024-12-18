@@ -42,22 +42,6 @@ export class LocalStorageService implements ILocalStorageService {
 	}
 
 	/**
-	 * 問題IDに紐づく回答結果を取得
-	 * @param questionId 問題ID
-	 * @returns 回答結果の配列
-	 */
-	async getAnswerResultsByQuestionId(questionId: string) {
-		const answerResults =
-			await this._localStorageAdapter.get<
-				LocalStorageVer2Schema["answerResults"]
-			>("answerResults");
-		const questionIdInt = Number.parseInt(questionId, 16);
-		return answerResults
-			.filter((answerResult) => answerResult.q === questionIdInt)
-			.map(this._convertToAnswerResultEntity);
-	}
-
-	/**
 	 * 回答結果の登録または更新
 	 * @param id 回答結果のID(nullの場合新規作成、numberの場合更新)
 	 * @param questionId 問題ID
@@ -117,22 +101,19 @@ export class LocalStorageService implements ILocalStorageService {
 	}
 
 	/**
-	 * 回答結果IDに紐づく復習予定を取得
-	 * @param answerResultId 回答結果ID
-	 * @returns 復習予定
+	 * 問題IDに紐づく回答結果を取得
+	 * @param questionId 問題ID
+	 * @returns 回答結果の配列
 	 */
-	async getReviewPlanByAnswerResultId(answerResultId: number) {
-		const reviewPlans =
+	async getAnswerResultsByQuestionId(questionId: string) {
+		const answerResults =
 			await this._localStorageAdapter.get<
-				LocalStorageVer2Schema["reviewPlans"]
-			>("reviewPlans");
-		const reviewPlan = reviewPlans.find(
-			(reviewPlan) => reviewPlan.a === answerResultId,
-		);
-		if (reviewPlan === undefined) {
-			return null;
-		}
-		return this._convertToReviewPlanEntity(reviewPlan);
+				LocalStorageVer2Schema["answerResults"]
+			>("answerResults");
+		const questionIdInt = Number.parseInt(questionId, 16);
+		return answerResults
+			.filter((answerResult) => answerResult.q === questionIdInt)
+			.map(this._convertToAnswerResultEntity);
 	}
 
 	/**
@@ -187,6 +168,25 @@ export class LocalStorageService implements ILocalStorageService {
 		reviewPlans[reviewPlanIndex].c = completed ? 1 : 0;
 		await this._localStorageAdapter.set("reviewPlans", reviewPlans);
 		return reviewPlans[reviewPlanIndex].i;
+	}
+
+	/**
+	 * 回答結果IDに紐づく復習予定を取得
+	 * @param answerResultId 回答結果ID
+	 * @returns 復習予定
+	 */
+	async getReviewPlanByAnswerResultId(answerResultId: number) {
+		const reviewPlans =
+			await this._localStorageAdapter.get<
+				LocalStorageVer2Schema["reviewPlans"]
+			>("reviewPlans");
+		const reviewPlan = reviewPlans.find(
+			(reviewPlan) => reviewPlan.a === answerResultId,
+		);
+		if (reviewPlan === undefined) {
+			return null;
+		}
+		return this._convertToReviewPlanEntity(reviewPlan);
 	}
 
 	/**
@@ -284,11 +284,6 @@ export class LocalStorageService implements ILocalStorageService {
 		);
 	}
 
-	/**
-	 * ver2の保存形式であるanswerResultをAnswerResultTypeに変換
-	 * @param answerResult
-	 * @returns AnswerResultType
-	 */
 	private _convertToAnswerResultEntity(
 		answerResult: LocalStorageVer2Schema["answerResults"][number],
 	) {
@@ -301,11 +296,6 @@ export class LocalStorageService implements ILocalStorageService {
 		};
 	}
 
-	/**
-	 * ver2の保存形式であるreviewPlanをReviewPlanTypeに変換
-	 * @param reviewPlan
-	 * @returns ReviewPlanType
-	 */
 	private _convertToReviewPlanEntity(
 		reviewPlan: LocalStorageVer2Schema["reviewPlans"][number],
 	) {

@@ -10,15 +10,6 @@ export interface ILocalStorageService {
 	validateVersion(): Promise<void>;
 
 	/**
-	 * 問題IDに紐づく回答結果を取得
-	 * @param questionId 問題ID
-	 * @returns 回答結果の配列
-	 */
-	getAnswerResultsByQuestionId(
-		questionId: string,
-	): Promise<Array<AnswerResultType>>;
-
-	/**
 	 * 回答結果の登録または更新
 	 * @param id 回答結果のID(nullの場合新規作成、numberの場合更新)
 	 * @param questionId 問題ID
@@ -37,13 +28,13 @@ export interface ILocalStorageService {
 	): Promise<number>;
 
 	/**
-	 * 回答結果IDに紐づく復習予定を取得
-	 * @param answerResultId 回答結果ID
-	 * @returns 復習予定
+	 * 問題IDに紐づく回答結果を取得
+	 * @param questionId 問題ID
+	 * @returns 回答結果の配列
 	 */
-	getReviewPlanByAnswerResultId(
-		answerResultId: number,
-	): Promise<ReviewPlanType | null>;
+	getAnswerResultsByQuestionId(
+		questionId: string,
+	): Promise<Array<AnswerResultType>>;
 
 	/**
 	 * reviewPlanの登録または更新
@@ -58,6 +49,15 @@ export interface ILocalStorageService {
 		nextDate: Dayjs,
 		completed: boolean,
 	): Promise<number>;
+
+	/**
+	 * 回答結果IDに紐づく復習予定を取得
+	 * @param answerResultId 回答結果ID
+	 * @returns 復習予定
+	 */
+	getReviewPlanByAnswerResultId(
+		answerResultId: number,
+	): Promise<ReviewPlanType | null>;
 
 	/**
 	 * 未完了(completed === false)のreviewPlanで、nextDateがuntilOrEqualTo以下のものを、answerResultsと結合してnextDate昇順で取得
