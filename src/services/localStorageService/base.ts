@@ -46,11 +46,12 @@ export interface ILocalStorageService {
 	): Promise<ReviewPlanType | null>;
 
 	/**
-	 * レビュー予定の登録または更新
-	 * @param answerResultId 回答結果ID(一致するレビュー予定がない場合新規作成)
-	 * @param nextDate 次回レビュー日
+	 * reviewPlanの登録または更新
+	 * @param answerResultId 回答結果ID(idがanswerResultIdであるanswerResultに紐づくreviewPlanがない場合新規作成)
+	 * @param nextDate 次回復習日
 	 * @param completed 復習完了フラグ
 	 * @returns 登録・更新したreviewPlanのID
+	 * @throws idがanswerResultIdであるanswerResultが見つからない
 	 */
 	upsertReviewPlan(
 		answerResultId: number,

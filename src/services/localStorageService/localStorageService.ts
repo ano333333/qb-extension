@@ -1,13 +1,14 @@
 import { inject, injectable } from "inversify";
 import type { ILocalStorageAdapter } from "../../adapters/localStorage/base";
 import { TYPES } from "../../types";
-import {
-	LocalStorageVer1Default,
-	type LocalStorageVer1Schema,
-} from "./ver1Schema";
 import type { AnswerResultEnum } from "../../logics/answerResultEnum";
 import dayjs, { type Dayjs } from "dayjs";
 import type { ILocalStorageService } from "./base";
+import {
+	convertVer1ToVer2,
+	LocalStorageVer2Default,
+	type LocalStorageVer2Schema,
+} from "./ver2Schema";
 
 @injectable()
 export class LocalStorageService implements ILocalStorageService {
@@ -25,13 +26,18 @@ export class LocalStorageService implements ILocalStorageService {
 	 */
 	async validateVersion() {
 		if (!(await this._localStorageAdapter.hasKey("version"))) {
-			const defaultValues = { ...LocalStorageVer1Default };
+			const defaultValues = { ...LocalStorageVer2Default };
 			for (const key in defaultValues) {
 				await this._localStorageAdapter.set(
 					key,
 					defaultValues[key as keyof typeof defaultValues],
 				);
 			}
+		}
+		let version = await this._localStorageAdapter.get<number>("version");
+		if (version === 1) {
+			await convertVer1ToVer2(this._localStorageAdapter);
+			version = await this._localStorageAdapter.get<number>("version");
 		}
 	}
 
@@ -43,14 +49,12 @@ export class LocalStorageService implements ILocalStorageService {
 	async getAnswerResultsByQuestionId(questionId: string) {
 		const answerResults =
 			await this._localStorageAdapter.get<
-				LocalStorageVer1Schema["answerResults"]
+				LocalStorageVer2Schema["answerResults"]
 			>("answerResults");
+		const questionIdInt = Number.parseInt(questionId, 16);
 		return answerResults
-			.filter((answerResult) => answerResult.questionId === questionId)
-			.map((answerResult) => ({
-				...answerResult,
-				answerDate: dayjs(answerResult.answerDate),
-			}));
+			.filter((answerResult) => answerResult.q === questionIdInt)
+			.map(this._convertToAnswerResultEntity);
 	}
 
 	/**
@@ -75,34 +79,34 @@ export class LocalStorageService implements ILocalStorageService {
 		);
 		const answerResults =
 			await this._localStorageAdapter.get<
-				LocalStorageVer1Schema["answerResults"]
+				LocalStorageVer2Schema["answerResults"]
 			>("answerResults");
 		const answerResultNextId = await this._localStorageAdapter.get<number>(
 			"answerResultsNextId",
 		);
 		if (id !== null) {
 			const answerResultIndex = answerResults.findIndex(
-				(answerResult) => answerResult.id === id,
+				(answerResult) => answerResult.i === id,
 			);
 			if (answerResultIndex === -1) {
 				throw new Error("Answer result not found");
 			}
 			answerResults[answerResultIndex] = {
-				id,
-				questionId,
-				setId,
-				answerDate: answerDate.format("YYYY-MM-DD"),
-				result,
+				i: id,
+				q: Number.parseInt(questionId, 16),
+				s: Number.parseInt(setId, 16),
+				a: Number.parseInt(answerDate.format("YYYYMMDD")),
+				r: result,
 			};
 			await this._localStorageAdapter.set("answerResults", answerResults);
 			return id;
 		}
 		answerResults.push({
-			id: answerResultNextId,
-			questionId,
-			setId,
-			answerDate: answerDate.format("YYYY-MM-DD"),
-			result,
+			i: answerResultNextId,
+			q: Number.parseInt(questionId, 16),
+			s: Number.parseInt(setId, 16),
+			a: Number.parseInt(answerDate.format("YYYYMMDD")),
+			r: result,
 		});
 		await this._localStorageAdapter.set("answerResults", answerResults);
 		await this._localStorageAdapter.set(
@@ -120,47 +124,55 @@ export class LocalStorageService implements ILocalStorageService {
 	async getReviewPlanByAnswerResultId(answerResultId: number) {
 		const reviewPlans =
 			await this._localStorageAdapter.get<
-				LocalStorageVer1Schema["reviewPlans"]
+				LocalStorageVer2Schema["reviewPlans"]
 			>("reviewPlans");
 		const reviewPlan = reviewPlans.find(
-			(reviewPlan) => reviewPlan.answerResultId === answerResultId,
+			(reviewPlan) => reviewPlan.a === answerResultId,
 		);
 		if (reviewPlan === undefined) {
 			return null;
 		}
-		return {
-			...reviewPlan,
-			nextDate: dayjs(reviewPlan.nextDate),
-		};
+		return this._convertToReviewPlanEntity(reviewPlan);
 	}
 
 	/**
-	 * レビュー予定の登録または更新
-	 * @param answerResultId 回答結果ID(一致するレビュー予定がない場合新規作成)
-	 * @param nextDate 次回レビュー日
+	 * reviewPlanの登録または更新
+	 * @param answerResultId 回答結果ID(idがanswerResultIdであるanswerResultに紐づくreviewPlanがない場合新規作成)
+	 * @param nextDate 次回復習日
 	 * @param completed 復習完了フラグ
 	 * @returns 登録・更新したreviewPlanのID
+	 * @throws idがanswerResultIdであるanswerResultが見つからない
 	 */
 	async upsertReviewPlan(
 		answerResultId: number,
 		nextDate: Dayjs,
 		completed: boolean,
 	) {
+		const answerResults =
+			await this._localStorageAdapter.get<
+				LocalStorageVer2Schema["answerResults"]
+			>("answerResults");
+		const answerResult = answerResults.find(
+			(answerResult) => answerResult.i === answerResultId,
+		);
+		if (answerResult === undefined) {
+			throw new Error("Answer result not found");
+		}
 		const reviewPlans =
 			await this._localStorageAdapter.get<
-				LocalStorageVer1Schema["reviewPlans"]
+				LocalStorageVer2Schema["reviewPlans"]
 			>("reviewPlans");
 		const reviewPlansNextId =
 			await this._localStorageAdapter.get<number>("reviewPlansNextId");
 		const reviewPlanIndex = reviewPlans.findIndex(
-			(reviewPlan) => reviewPlan.answerResultId === answerResultId,
+			(reviewPlan) => reviewPlan.a === answerResultId,
 		);
 		if (reviewPlanIndex === -1) {
 			reviewPlans.push({
-				id: reviewPlansNextId,
-				answerResultId,
-				nextDate: nextDate.format("YYYY-MM-DD"),
-				completed,
+				i: reviewPlansNextId,
+				a: answerResultId,
+				n: Number.parseInt(nextDate.format("YYYYMMDD")),
+				c: completed ? 1 : 0,
 			});
 			await this._localStorageAdapter.set("reviewPlans", reviewPlans);
 			await this._localStorageAdapter.set(
@@ -169,11 +181,14 @@ export class LocalStorageService implements ILocalStorageService {
 			);
 			return reviewPlansNextId;
 		}
-		reviewPlans[reviewPlanIndex].nextDate = nextDate.format("YYYY-MM-DD");
-		reviewPlans[reviewPlanIndex].completed = completed;
+		reviewPlans[reviewPlanIndex].n = Number.parseInt(
+			nextDate.format("YYYYMMDD"),
+		);
+		reviewPlans[reviewPlanIndex].c = completed ? 1 : 0;
 		await this._localStorageAdapter.set("reviewPlans", reviewPlans);
-		return reviewPlans[reviewPlanIndex].id;
+		return reviewPlans[reviewPlanIndex].i;
 	}
+
 	/**
 	 * 未完了(completed === false)のreviewPlanで、nextDateがuntilOrEqualTo以下のものを、answerResultsと結合してnextDate昇順で取得
 	 * @param untilOrEqualTo
@@ -182,37 +197,31 @@ export class LocalStorageService implements ILocalStorageService {
 	async getUncompletedReviewPlans(untilOrEqualTo: Dayjs) {
 		const reviewPlans =
 			await this._localStorageAdapter.get<
-				LocalStorageVer1Schema["reviewPlans"]
+				LocalStorageVer2Schema["reviewPlans"]
 			>("reviewPlans");
 		const answerResults =
 			await this._localStorageAdapter.get<
-				LocalStorageVer1Schema["answerResults"]
+				LocalStorageVer2Schema["answerResults"]
 			>("answerResults");
 		const idAnswerResultMap = new Map<number, (typeof answerResults)[number]>();
 		for (const answerResult of answerResults) {
-			idAnswerResultMap.set(answerResult.id, answerResult);
+			idAnswerResultMap.set(answerResult.i, answerResult);
 		}
 		const filteredReviewPlans = reviewPlans
-			.filter((reviewPlan) => !reviewPlan.completed)
+			.filter((reviewPlan) => reviewPlan.c === 0)
 			.filter(
 				(reviewPlan) =>
-					!dayjs(reviewPlan.nextDate).isAfter(untilOrEqualTo, "day"),
+					!dayjs(reviewPlan.n.toString()).isAfter(untilOrEqualTo, "day"),
 			)
-			.sort((a, b) => dayjs(a.nextDate).diff(dayjs(b.nextDate)));
+			.sort((a, b) => dayjs(a.n.toString()).diff(dayjs(b.n.toString())));
 		return filteredReviewPlans.map((reviewPlan) => {
-			const answerResult = idAnswerResultMap.get(reviewPlan.answerResultId);
+			const answerResult = idAnswerResultMap.get(reviewPlan.a);
 			if (!answerResult) {
-				throw new Error(
-					`Answer result not found: ${reviewPlan.answerResultId}`,
-				);
+				throw new Error(`Answer result not found: ${reviewPlan.a}`);
 			}
 			return {
-				...reviewPlan,
-				nextDate: dayjs(reviewPlan.nextDate),
-				answerResult: {
-					...answerResult,
-					answerDate: dayjs(answerResult.answerDate),
-				},
+				...this._convertToReviewPlanEntity(reviewPlan),
+				answerResult: this._convertToAnswerResultEntity(answerResult),
 			};
 		});
 	}
@@ -224,10 +233,10 @@ export class LocalStorageService implements ILocalStorageService {
 	async deleteReviewPlan(id: number) {
 		const reviewPlans =
 			await this._localStorageAdapter.get<
-				LocalStorageVer1Schema["reviewPlans"]
+				LocalStorageVer2Schema["reviewPlans"]
 			>("reviewPlans");
 		const reviewPlanIndex = reviewPlans.findIndex(
-			(reviewPlan) => reviewPlan.id === id,
+			(reviewPlan) => reviewPlan.i === id,
 		);
 		if (reviewPlanIndex !== -1) {
 			reviewPlans.splice(reviewPlanIndex, 1);
@@ -239,14 +248,14 @@ export class LocalStorageService implements ILocalStorageService {
 		const version = await this._localStorageAdapter.get<number>("version");
 		const answerResults =
 			await this._localStorageAdapter.get<
-				LocalStorageVer1Schema["answerResults"]
+				LocalStorageVer2Schema["answerResults"]
 			>("answerResults");
 		const answerResultsNextId = await this._localStorageAdapter.get<number>(
 			"answerResultsNextId",
 		);
 		const reviewPlans =
 			await this._localStorageAdapter.get<
-				LocalStorageVer1Schema["reviewPlans"]
+				LocalStorageVer2Schema["reviewPlans"]
 			>("reviewPlans");
 		const reviewPlansNextId =
 			await this._localStorageAdapter.get<number>("reviewPlansNextId");
@@ -273,5 +282,38 @@ export class LocalStorageService implements ILocalStorageService {
 			"reviewPlansNextId",
 			all.reviewPlansNextId,
 		);
+	}
+
+	/**
+	 * ver2の保存形式であるanswerResultをAnswerResultTypeに変換
+	 * @param answerResult
+	 * @returns AnswerResultType
+	 */
+	private _convertToAnswerResultEntity(
+		answerResult: LocalStorageVer2Schema["answerResults"][number],
+	) {
+		return {
+			id: answerResult.i,
+			questionId: answerResult.q.toString(16).toUpperCase(),
+			setId: answerResult.s.toString(16).toUpperCase(),
+			answerDate: dayjs(answerResult.a.toString()),
+			result: answerResult.r,
+		};
+	}
+
+	/**
+	 * ver2の保存形式であるreviewPlanをReviewPlanTypeに変換
+	 * @param reviewPlan
+	 * @returns ReviewPlanType
+	 */
+	private _convertToReviewPlanEntity(
+		reviewPlan: LocalStorageVer2Schema["reviewPlans"][number],
+	) {
+		return {
+			id: reviewPlan.i,
+			answerResultId: reviewPlan.a,
+			nextDate: dayjs(reviewPlan.n.toString()),
+			completed: reviewPlan.c !== 0,
+		};
 	}
 }
