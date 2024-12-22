@@ -40,7 +40,7 @@ export function calcNextReviewDate(
 			case AnswerResultEnum.Correct:
 				return date.add(Math.ceil(daysDiff * 1.5), "day");
 			case AnswerResultEnum.Easy:
-				return date.add(daysDiff * 2, "day");
+				return date.add(daysDiff * 3, "day");
 		}
 	}
 	const daysDiff = date.diff(prevDate, "day");

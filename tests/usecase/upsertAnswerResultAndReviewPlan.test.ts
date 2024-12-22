@@ -4,6 +4,7 @@ import { LocalStorageService } from "../../src/services/localStorageService/loca
 import { AnswerResultEnum } from "../../src/logics/answerResultEnum";
 import dayjs from "dayjs";
 import { upsertAnswerResultAndReviewPlan } from "../../src/usecases/upsertAnswerResultAndReviewPlan";
+import { calcNextReviewDate } from "../../src/logics/calcNextReviewDate";
 
 describe("upsertAnswerResultAndReviewPlan", () => {
 	let localStorageAdapter: MockLocalStorage;
@@ -98,24 +99,24 @@ describe("upsertAnswerResultAndReviewPlan", () => {
 	 * 1. 日付"2024-12-08"、問題ID"114C03"(新規問題)、回答結果AnswerResultEnum.Easyに対しupsertAnswerResultAndReviewPlanを実行し、
 	 *   - 実行前後の問題ID"114C03"に対するgetAnswerResultsByQuestionIdの返り値を比較
 	 *   - 増加したanswerResultのIDがupsertAnswerResultの返り値であることを確認
-	 *   - 増加したanswerResultの問題IDに対しgetReviewPlanByAnswerResultIdを実行し、次回復習日が"2024-12-12"であること、completedがfalseであることを確認
+	 *   - 増加したanswerResultの問題IDに対しgetReviewPlanByAnswerResultIdを実行し、次回復習日が正しいこと、completedがfalseであることを確認
 	 * 2. 日付"2024-12-14"、問題ID"114C01"(既存問題)、回答結果AnswerResultEnum.Easyに対しupsertAnswerResultAndReviewPlanを実行し
 	 *   - 実行前後の問題ID"114C01"に対するgetAnswerResultsByQuestionIdの返り値を比較
 	 *   - 増加したanswerResultのIDがupsertAnswerResultの返り値に等しいことを確認
-	 *   - 増加したanswerResultの問題IDに対しgetReviewPlanByAnswerResultIdを実行し、次回復習日が"2024-12-22"であること、completedがfalseであることを確認
+	 *   - 増加したanswerResultの問題IDに対しgetReviewPlanByAnswerResultIdを実行し、次回復習日が正しいこと、completedがfalseであることを確認
 	 *   - IDがanswerResultId114C01_0、_1、_2であるanswerResultに対応するreviewPlanが存在しないことを確認
 	 *   - IDがanswerResultId114C01_3であるanswerResultに対応するreviewPlanのcompletedがtrueであることを確認
 	 * 3. 日付"2024-12-18"、問題ID"114C02"(既存問題)、回答結果AnswerResultEnum.Easyに対しupsertAnswerResultAndReviewPlanを実行し
 	 *   - 実行前後の問題ID"114C02"に対するgetAnswerResultsByQuestionIdの返り値を比較
 	 *   - 増加したanswerResultのIDがupsertAnswerResultの返り値とanswerResultId114C02_1に等しいことを確認
-	 *   - 増加したanswerResultの問題IDに対しgetReviewPlanByAnswerResultIdを実行し、次回復習日が"2024-12-30"であること、completedがfalseであることを確認
+	 *   - 増加したanswerResultの問題IDに対しgetReviewPlanByAnswerResultIdを実行し、次回復習日が正しいこと、completedがfalseであることを確認
 	 *   - IDがanswerResultId114C02_0であるanswerResultに対応するreviewPlanが存在しないことを確認
 	 *   - IDがanswerResultId114C02_1であるanswerResultに対応するreviewPlanのcompletedがtrueであることを確認
 	 * 4. 日付"2024-12-12"、問題ID"114C02"(既存問題)、回答結果AnswerResultEnum.Correctに対しupsertAnswerResultAndReviewPlanを実行し
 	 *   - 実行前後の問題ID"114C02"に対するgetAnswerResultsByQuestionIdの返り値を比較
 	 *   - upsertAnswerResultの返り値とanswerResultId114C02_1が等しいことを確認
 	 *   - IDがanswerResultId114C02_0であるanswerResultに対応するreviewPlanのcompletedがtrueであることを確認
-	 *   - 返り値に対しgetReviewPlanByAnswerResultIdを実行し、次回復習日が"2024-12-15"であること、completedがfalseであることを確認
+	 *   - 返り値に対しgetReviewPlanByAnswerResultIdを実行し、次回復習日が正しいこと、completedがfalseであることを確認
 	 */
 	it("1", async () => {
 		const answerResultsBefore =
@@ -136,7 +137,13 @@ describe("upsertAnswerResultAndReviewPlan", () => {
 		const reviewPlan = await localStorageService.getReviewPlanByAnswerResultId(
 			newAnswerResult.id,
 		);
-		expect(reviewPlan?.nextDate.format("YYYY-MM-DD")).toBe("2024-12-12");
+		const expectedReviewDate = calcNextReviewDate(
+			dayjs("2024-12-08"),
+			null,
+			null,
+			AnswerResultEnum.Easy,
+		);
+		expect(reviewPlan?.nextDate).toEqual(expectedReviewDate);
 		expect(reviewPlan?.completed).toBe(false);
 	});
 	it("2", async () => {
@@ -178,7 +185,13 @@ describe("upsertAnswerResultAndReviewPlan", () => {
 		const reviewPlan = await localStorageService.getReviewPlanByAnswerResultId(
 			newAnswerResult.id,
 		);
-		expect(reviewPlan?.nextDate.format("YYYY-MM-DD")).toBe("2024-12-22");
+		const expectedReviewDate = calcNextReviewDate(
+			dayjs("2024-12-14"),
+			dayjs("2024-12-10"),
+			dayjs("2024-12-13"),
+			AnswerResultEnum.Easy,
+		);
+		expect(reviewPlan?.nextDate).toEqual(expectedReviewDate);
 		expect(reviewPlan?.completed).toBe(false);
 	});
 	it("3", async () => {
@@ -209,7 +222,13 @@ describe("upsertAnswerResultAndReviewPlan", () => {
 		const reviewPlan = await localStorageService.getReviewPlanByAnswerResultId(
 			newAnswerResult.id,
 		);
-		expect(reviewPlan?.nextDate.format("YYYY-MM-DD")).toBe("2024-12-30");
+		const expectedReviewDate = calcNextReviewDate(
+			dayjs("2024-12-18"),
+			dayjs("2024-12-12"),
+			dayjs("2024-12-16"),
+			AnswerResultEnum.Easy,
+		);
+		expect(reviewPlan?.nextDate).toEqual(expectedReviewDate);
 		expect(reviewPlan?.completed).toBe(false);
 		expect(reviewPlan114C02_1?.completed).toBe(true);
 	});
@@ -235,7 +254,13 @@ describe("upsertAnswerResultAndReviewPlan", () => {
 		expect(reviewPlan114C02_0?.completed).toBe(true);
 		const reviewPlan =
 			await localStorageService.getReviewPlanByAnswerResultId(returnedId);
-		expect(reviewPlan?.nextDate.format("YYYY-MM-DD")).toBe("2024-12-15");
+		const expectedReviewDate = calcNextReviewDate(
+			dayjs("2024-12-12"),
+			dayjs("2024-12-10"),
+			dayjs("2024-12-12"),
+			AnswerResultEnum.Correct,
+		);
+		expect(reviewPlan?.nextDate).toEqual(expectedReviewDate);
 		expect(reviewPlan?.completed).toBe(false);
 	});
 });

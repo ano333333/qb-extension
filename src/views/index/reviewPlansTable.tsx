@@ -25,7 +25,12 @@ export function ReviewPlansTable({ reviewPlans }: ReviewPlansTableProps) {
 		return plans;
 	}, [page, reviewPlans]);
 	const isFirstPage = page === 0;
-	const isLastPage = page === Math.floor(reviewPlans.length / PAGE_SIZE);
+	// 最後のページのページ番号(0-indexed)
+	const lastPage = Math.max(
+		0,
+		Math.floor((reviewPlans.length - 1) / PAGE_SIZE),
+	);
+	const isLastPage = page === lastPage;
 
 	return (
 		<div className="p-2 flex flex-col">
