@@ -6,6 +6,7 @@ import type { LocalStorageService } from "../../services/localStorageService/loc
 import dayjs, { type Dayjs } from "dayjs";
 import { Button } from "../components/button";
 import { ReviewPlansTable } from "./reviewPlansTable";
+import type { AnswerResultEnum } from "../../logics/answerResultEnum";
 
 function IndexApp() {
 	const controllerRef = useRef(
@@ -15,8 +16,8 @@ function IndexApp() {
 	);
 	const [reviewPlans, setReviewPlans] = useState<
 		Array<{
-			questionId: string;
 			url: string;
+			answerResult: AnswerResultEnum;
 			reviewLimit: Dayjs;
 		}>
 	>([]);

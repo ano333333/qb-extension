@@ -1,24 +1,39 @@
 import type { Dayjs } from "dayjs";
 import { useMemo, useState } from "react";
+import { AnswerResultEnum } from "../../logics/answerResultEnum";
 
 export type ReviewPlansTableProps = {
 	reviewPlans: Array<{
-		questionId: string;
 		url: string;
+		answerResult: AnswerResultEnum;
 		reviewLimit: Dayjs;
 	}>;
 };
 
 const PAGE_SIZE = 10;
 
+function getAnswerResultLabel(answerResult: AnswerResultEnum) {
+	switch (answerResult) {
+		case AnswerResultEnum.Easy:
+			return "◎";
+		case AnswerResultEnum.Correct:
+			return "◯";
+		case AnswerResultEnum.Difficult:
+			return "△";
+		case AnswerResultEnum.Wrong:
+			return "×";
+		default:
+			return "-";
+	}
+}
+
 export function ReviewPlansTable({ reviewPlans }: ReviewPlansTableProps) {
 	const [page, setPage] = useState(0);
 	const pageReviewPlans = useMemo(() => {
-		const plans: Array<{
-			questionId: string;
-			url: string;
-			reviewLimit: Dayjs;
-		}> = reviewPlans.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+		const plans: typeof reviewPlans = reviewPlans.slice(
+			page * PAGE_SIZE,
+			(page + 1) * PAGE_SIZE,
+		);
 		if (plans.length < PAGE_SIZE) {
 			plans.push(...Array(PAGE_SIZE - plans.length).fill(undefined));
 		}
@@ -37,19 +52,15 @@ export function ReviewPlansTable({ reviewPlans }: ReviewPlansTableProps) {
 			<table className="w-full m-1 border-collapse border border-gray-300">
 				<thead className="bg-gray-200 text-left">
 					<tr className="grid grid-cols-8">
-						<th className="col-span-1">質問ID</th>
-						<th className="col-span-5">質問URL</th>
+						<th className="col-span-4">質問URL</th>
+						<th className="col-span-2">前回結果</th>
 						<th className="col-span-2">復習期限</th>
 					</tr>
 				</thead>
 				<tbody>
 					{pageReviewPlans.map((reviewPlan) => (
-						<tr
-							className="grid grid-cols-8 h-[2em]"
-							key={reviewPlan?.questionId}
-						>
-							<td className="col-span-1">{reviewPlan?.questionId}</td>
-							<td className="col-span-5">
+						<tr className="grid grid-cols-8 h-[2em]" key={reviewPlan?.url}>
+							<td className="col-span-4">
 								<a
 									href={reviewPlan?.url}
 									target="_blank"
@@ -58,6 +69,11 @@ export function ReviewPlansTable({ reviewPlans }: ReviewPlansTableProps) {
 								>
 									{reviewPlan?.url}
 								</a>
+							</td>
+							<td className="col-span-2">
+								{reviewPlan
+									? getAnswerResultLabel(reviewPlan?.answerResult)
+									: ""}
 							</td>
 							<td className="col-span-2">
 								{reviewPlan?.reviewLimit.format("YYYY/MM/DD")}
